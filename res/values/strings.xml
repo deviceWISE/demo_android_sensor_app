@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">DW Sensor Demo</string>
+    <string name="app_name_short">DW Demo</string>
+    <string name="action_settings">Settings</string>
+    <string name="default_server">open-api.devicewise.com</string>
+    <string name="app_token">OPEN-ANDROID</string>
+    <string name="imei">&lt;IMEI></string>
+    <string name="conn_connect">Connect</string>
+    <string name="conn_disconnect">Disconnect</string>
+    <string name="alarm_name">Toggle Alarm</string>
+    <string name="publish_location">Publish Location</string>
+    <string name="service_name">DWService</string>
+    <string name="location_current">Lat: --- Lng: ---</string>
+    <string name="loc_fixacc">Provider: -- Accuracy: --</string>
+
+</resources>
