@@ -14,5 +14,8 @@
     <string name="service_name">DWService</string>
     <string name="location_current">Lat: --- Lng: ---</string>
     <string name="loc_fixacc">Provider: -- Accuracy: --</string>
+    <string name="rate_10sec">10sec</string>
+    <string name="rate_5min">5min</string>
+    <string name="rate_switch">Publish Rate</string>
 
 </resources>

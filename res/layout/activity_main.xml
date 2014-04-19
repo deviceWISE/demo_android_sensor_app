@@ -55,6 +55,15 @@
             android:checked="true"
             android:text="@string/publish_location" />
 
+        <Switch
+            android:id="@+id/switchFastPub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/rate_switch"
+            android:textOff="@string/rate_5min"
+            android:textOn="@string/rate_10sec" />
+
         <TextView
             android:id="@+id/textViewLoc1"
             android:layout_width="match_parent"

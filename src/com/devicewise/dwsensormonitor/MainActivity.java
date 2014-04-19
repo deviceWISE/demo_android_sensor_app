@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
 import android.util.Log;
@@ -15,9 +16,10 @@ import android.widget.EditText;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.ToggleButton;
-import android.os.Build;
 
 public class MainActivity extends Activity implements OnCheckedChangeListener {
+
+	private static final String PREFS_NAME = "dwSensorMonitor";
 
 	String imei;
 
@@ -31,7 +33,15 @@ public class MainActivity extends Activity implements OnCheckedChangeListener {
 
 			if (action == "com.devicewise.CONNECTION_STATE") {
 				ToggleButton btn = (ToggleButton) findViewById(R.id.toggleButtonConn);
-				btn.setChecked(intent.getBooleanExtra("state", false));
+				boolean state = intent.getBooleanExtra("state", false);
+				btn.setChecked(state);
+				if(state) {
+					Switch sw = (Switch) findViewById(R.id.switchFastPub);
+					sw.setEnabled(false);
+				} else {
+					Switch sw = (Switch) findViewById(R.id.switchFastPub);
+					sw.setEnabled(true);
+				}
 			} else if (action == "com.devicewise.LOCATION_UPDATE") {
 				TextView loc1 = (TextView) findViewById(R.id.textViewLoc1);
 				TextView loc2 = (TextView) findViewById(R.id.textViewLoc2);
@@ -69,6 +79,28 @@ public class MainActivity extends Activity implements OnCheckedChangeListener {
 
 		EditText txt3 = (EditText) findViewById(R.id.editTextImei);
 		txt3.setText(imei);
+		
+		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+	    String server = settings.getString("server", "open-api.devicewise.com");
+	    String apptoken = settings.getString("apptoken", "OPEN-ANDROID");
+	    boolean fast_pub = settings.getBoolean("fast_pub", true);
+	    boolean connected = settings.getBoolean("connected", false);
+	    
+	    EditText txt1 = (EditText) findViewById(R.id.editTextServer);
+		txt1.setText(server);
+		EditText txt2 = (EditText) findViewById(R.id.editTextAppToken);
+		txt2.setText(apptoken);
+		Switch sw = (Switch) findViewById(R.id.switchFastPub);
+		sw.setChecked(fast_pub);
+		
+		if(connected) {
+			Intent i = new Intent(MainActivity.this, DwService.class);
+			i.setAction("connect");
+			i.putExtra("server", server);
+			i.putExtra("apptoken", apptoken);
+			i.putExtra("fast_pub", fast_pub);
+			startService(i);
+		}
 
 	}
 
@@ -91,6 +123,8 @@ public class MainActivity extends Activity implements OnCheckedChangeListener {
 	public void onStop() {
 		this.unregisterReceiver(receiver);
 		super.onStop();
+		
+		saveSettings();
 	}
 
 	public void ConnButtonOnClick(View v) {
@@ -101,7 +135,11 @@ public class MainActivity extends Activity implements OnCheckedChangeListener {
 			Intent i = new Intent(MainActivity.this, DwService.class);
 			i.setAction("disconnect");
 			startService(i);
+			saveSettings();
 		} else {
+			
+			saveSettings();
+			
 			Log.i("connBtn", "Starting service");
 
 			EditText txt1 = (EditText) findViewById(R.id.editTextServer);
@@ -109,18 +147,17 @@ public class MainActivity extends Activity implements OnCheckedChangeListener {
 
 			EditText txt2 = (EditText) findViewById(R.id.editTextAppToken);
 			String apptoken = txt2.getText().toString();
+			
+			Switch sw = (Switch) findViewById(R.id.switchFastPub);
+			boolean fast_pub = sw.isChecked();
 
 			Intent i = new Intent(MainActivity.this, DwService.class);
 			i.setAction("connect");
 			i.putExtra("server", server);
 			i.putExtra("apptoken", apptoken);
+			i.putExtra("fast_pub", fast_pub);
 			startService(i);
 		}
-
-		/*
-		 * if (client.isConnected()) { btn.setChecked(true); } else {
-		 * btn.setChecked(false); }
-		 */
 	}
 
 	public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -129,18 +166,25 @@ public class MainActivity extends Activity implements OnCheckedChangeListener {
 		i.setAction("switchAlarm");
 		i.putExtra("state", isChecked);
 		startService(i);
+	}
+	
+	private void saveSettings() {
+		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+		SharedPreferences.Editor editor = settings.edit();
+		
+		EditText txt1 = (EditText) findViewById(R.id.editTextServer);
+		editor.putString("server", txt1.getText().toString());
 
-		// Toast.makeText(this, "The Switch is " + (isChecked ? "on" : "off"),
-		// Toast.LENGTH_SHORT).show();
-		/*
-		 * if (client == null || !client.isConnected()) { return; } try { if
-		 * (isChecked) { MqttMessage message = new MqttMessage();
-		 * message.setPayload("1".getBytes()); client.publish("me/alarm/switch",
-		 * message); } else { MqttMessage message = new MqttMessage();
-		 * message.setPayload("0".getBytes()); client.publish("me/alarm/switch",
-		 * message); } } catch (Exception e) { Log.i("sensor_publisher",
-		 * e.getMessage()); }
-		 */
+		EditText txt2 = (EditText) findViewById(R.id.editTextAppToken);
+		editor.putString("apptoken", txt2.getText().toString());
+		
+		ToggleButton btn = (ToggleButton) findViewById(R.id.toggleButtonConn);
+		editor.putBoolean("connected",btn.isChecked());
+		
+		Switch sw = (Switch) findViewById(R.id.switchFastPub);
+		editor.putBoolean("fast_pub",sw.isChecked());
+		
+		editor.commit();
 	}
 
 }
