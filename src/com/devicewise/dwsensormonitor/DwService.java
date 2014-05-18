@@ -50,6 +50,7 @@ public class DwService extends Service implements MqttCallback, LocationListener
 
 	long publish_interval = 10000;
 
+	boolean sesnorsRegistered = false;
 	SensorManager sensorManager;
 	Map<String, Long> lastPublishMap;
 	long lightLastPublish;
@@ -100,23 +101,24 @@ public class DwService extends Service implements MqttCallback, LocationListener
 				case Intent.ACTION_POWER_DISCONNECTED:
 				case Intent.ACTION_BATTERY_CHANGED:
 					int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
-					switch (status) {
-					case BatteryManager.BATTERY_STATUS_CHARGING:
-						publishAlarm("batterycharge",1);
-						break;
-					case BatteryManager.BATTERY_STATUS_DISCHARGING:
-						publishAlarm("batterycharge",0);
-						break;
-					case BatteryManager.BATTERY_STATUS_NOT_CHARGING:
-					case BatteryManager.BATTERY_STATUS_FULL:
-						publishAlarm("batterycharge",2);
-						break;
-					}
 					
 					Long lastPubTime = lastPublishMap.get("battery_level");
 
 					if (lastPubTime == null || (lastPubTime + publish_interval < System.currentTimeMillis())) {
 						lastPublishMap.put("battery_level", System.currentTimeMillis());
+						
+						switch (status) {
+						case BatteryManager.BATTERY_STATUS_CHARGING:
+							publishAlarm("batterycharge",1);
+							break;
+						case BatteryManager.BATTERY_STATUS_DISCHARGING:
+							publishAlarm("batterycharge",0);
+							break;
+						case BatteryManager.BATTERY_STATUS_NOT_CHARGING:
+						case BatteryManager.BATTERY_STATUS_FULL:
+							publishAlarm("batterycharge",2);
+							break;
+						}
 					
 						int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
 						int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
@@ -138,9 +140,11 @@ public class DwService extends Service implements MqttCallback, LocationListener
 					break;
 				case Intent.ACTION_SCREEN_OFF:
 					publishAlarm("screen",0);
+					unregisterSensorListeners();
 					break;
 				case Intent.ACTION_SCREEN_ON:
 					publishAlarm("screen",1);
+					registerSensorListeners();
 					break;
 				//case Intent.ACTION_USER_PRESENT:
 				}
@@ -239,6 +243,7 @@ public class DwService extends Service implements MqttCallback, LocationListener
 			connect();
 			
 			registerListeners();
+			registerSensorListeners();
 			
 			sayHello();
 
@@ -246,6 +251,7 @@ public class DwService extends Service implements MqttCallback, LocationListener
 			Log.i("dw.service", "action: disconnect");
 
 			unregisterListeners();
+			unregisterSensorListeners();
 			
 			stopForeground(true);
 
@@ -394,7 +400,7 @@ public class DwService extends Service implements MqttCallback, LocationListener
 			MqttMessage message = new MqttMessage();
 			message.setPayload(Float.toString(value).getBytes());
 			try {
-				client.publish("me/property/" + name, message);
+				client.publish("$thing/$self/property/" + name, message);
 			} catch (Exception e) {
 				Log.i("dw.service", e.getMessage());
 			}
@@ -406,7 +412,7 @@ public class DwService extends Service implements MqttCallback, LocationListener
 			MqttMessage message = new MqttMessage();
 			message.setPayload(value.getBytes());
 			try {
-				client.publish("me/attribute/" + name, message);
+				client.publish("$thing/$self/attribute/" + name, message);
 			} catch (Exception e) {
 				Log.i("dw.service", e.getMessage());
 			}
@@ -418,7 +424,7 @@ public class DwService extends Service implements MqttCallback, LocationListener
 			MqttMessage message = new MqttMessage();
 			message.setPayload(Integer.toString(state).getBytes());
 			try {
-				client.publish("me/alarm/" + name, message);
+				client.publish("$thing/$self/alarm/" + name, message);
 			} catch (Exception e) {
 				Log.i("dw.service", e.getMessage());
 			}
@@ -433,6 +439,7 @@ public class DwService extends Service implements MqttCallback, LocationListener
 		Log.i("dw.service", "Publishing: location.");
 		double lat = (double) (location.getLatitude());
 		double lng = (double) (location.getLongitude());
+		locationProvider = location.getProvider();
 
 		Intent intent = new Intent();
 		intent.setAction("com.devicewise.LOCATION_UPDATE");
@@ -540,7 +547,8 @@ public class DwService extends Service implements MqttCallback, LocationListener
 		}
 	}
 	
-	private void registerListeners() {
+	private void registerSensorListeners() {
+		if(sesnorsRegistered) return;
 		int[] sensors = { 
 			Sensor.TYPE_AMBIENT_TEMPERATURE, Sensor.TYPE_RELATIVE_HUMIDITY, Sensor.TYPE_ACCELEROMETER,
 			Sensor.TYPE_LIGHT,Sensor.TYPE_PRESSURE,Sensor.TYPE_STEP_COUNTER,Sensor.TYPE_ORIENTATION,Sensor.TYPE_PROXIMITY
@@ -553,6 +561,10 @@ public class DwService extends Service implements MqttCallback, LocationListener
 				sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
 			}
 		}
+		sesnorsRegistered = true;
+	}
+	
+	private void registerListeners() {
 
 		findBestLocationProvider();
 		
@@ -577,11 +589,17 @@ public class DwService extends Service implements MqttCallback, LocationListener
 			telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);
 		}
 	}
+	
+	private void unregisterSensorListeners() {
+		if(!sesnorsRegistered) return;
+		sensorManager.unregisterListener(this);
+		sesnorsRegistered = false;
+	}
 
 	private void findBestLocationProvider() {
 		
 		locationManager.removeUpdates(this);
-		
+
 		Criteria criteria = new Criteria();
 		locationProvider = locationManager.getBestProvider(criteria, true);
 		Log.i("dw.service", "Found provider: " + locationProvider);
@@ -591,6 +609,7 @@ public class DwService extends Service implements MqttCallback, LocationListener
 			// Initialize the location fields
 			Location location = locationManager.getLastKnownLocation(locationProvider);
 			if (location != null) {
+				locationProvider = location.getProvider();
 				onLocationChanged(location);
 			}
 		}
