@@ -400,7 +400,7 @@ public class DwService extends Service implements MqttCallback, LocationListener
 			MqttMessage message = new MqttMessage();
 			message.setPayload(Float.toString(value).getBytes());
 			try {
-				client.publish("$thing/$self/property/" + name, message);
+				client.publish("thing/self/property/" + name, message);
 			} catch (Exception e) {
 				Log.i("dw.service", e.getMessage());
 			}
@@ -412,7 +412,7 @@ public class DwService extends Service implements MqttCallback, LocationListener
 			MqttMessage message = new MqttMessage();
 			message.setPayload(value.getBytes());
 			try {
-				client.publish("$thing/$self/attribute/" + name, message);
+				client.publish("thing/self/attribute/" + name, message);
 			} catch (Exception e) {
 				Log.i("dw.service", e.getMessage());
 			}
@@ -424,7 +424,7 @@ public class DwService extends Service implements MqttCallback, LocationListener
 			MqttMessage message = new MqttMessage();
 			message.setPayload(Integer.toString(state).getBytes());
 			try {
-				client.publish("$thing/$self/alarm/" + name, message);
+				client.publish("thing/self/alarm/" + name, message);
 			} catch (Exception e) {
 				Log.i("dw.service", e.getMessage());
 			}
